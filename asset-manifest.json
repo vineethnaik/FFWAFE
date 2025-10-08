@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/vineethnaik/FFWAFE/static/css/main.e51158d2.css",
-    "main.js": "/vineethnaik/FFWAFE/static/js/main.58c31747.js",
-    "static/js/453.6a0d7417.chunk.js": "/vineethnaik/FFWAFE/static/js/453.6a0d7417.chunk.js",
-    "index.html": "/vineethnaik/FFWAFE/index.html",
-    "main.e51158d2.css.map": "/vineethnaik/FFWAFE/static/css/main.e51158d2.css.map",
-    "main.58c31747.js.map": "/vineethnaik/FFWAFE/static/js/main.58c31747.js.map",
-    "453.6a0d7417.chunk.js.map": "/vineethnaik/FFWAFE/static/js/453.6a0d7417.chunk.js.map"
+    "main.css": "/FFWAFE/static/css/main.e51158d2.css",
+    "main.js": "/FFWAFE/static/js/main.c447aae5.js",
+    "static/js/453.6a0d7417.chunk.js": "/FFWAFE/static/js/453.6a0d7417.chunk.js",
+    "index.html": "/FFWAFE/index.html",
+    "main.e51158d2.css.map": "/FFWAFE/static/css/main.e51158d2.css.map",
+    "main.c447aae5.js.map": "/FFWAFE/static/js/main.c447aae5.js.map",
+    "453.6a0d7417.chunk.js.map": "/FFWAFE/static/js/453.6a0d7417.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.e51158d2.css",
-    "static/js/main.58c31747.js"
+    "static/js/main.c447aae5.js"
   ]
 }
