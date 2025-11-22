@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import {
   Container,
   Grid,
@@ -23,102 +23,293 @@ import {
   Snackbar,
   Alert,
   TextField,
-  Divider
+  Divider,
+  Checkbox,
+  FormGroup,
+  FormControlLabel,
+  Rating,
+  Stack
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { ShoppingCart } from '@mui/icons-material';
+import { ShoppingCart, Verified } from '@mui/icons-material';
 import NavBar from './NavBar';
 import { SearchContext } from './SearchContext';
 import { CartContext } from './CartContext';
 import { useNavigate } from 'react-router-dom';
 
+// Premium styled components matching ProductsPage
 const Sidebar = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(3),
-  borderRadius: 12,
+  padding: theme.spacing(3.5),
+  borderRadius: 20,
   minWidth: 260,
   maxWidth: 320,
   marginRight: theme.spacing(4),
+  background: 'linear-gradient(135deg, #ffffff 0%, #f8faf9 100%)',
+  boxShadow: '0 4px 20px rgba(46, 125, 50, 0.08)',
+  border: '1px solid rgba(46, 125, 50, 0.1)',
   [theme.breakpoints.down('md')]: {
     marginRight: 0,
     marginBottom: theme.spacing(4),
+    maxWidth: '100%',
   },
 }));
 
 const ProductCard = styled(Card)(({ theme }) => ({
-  borderRadius: 12,
-  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+  borderRadius: 20,
+  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
   marginBottom: theme.spacing(3),
+  background: '#ffffff',
+  border: '1px solid rgba(46, 125, 50, 0.1)',
+  overflow: 'hidden',
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  position: 'relative',
+  '&:hover': {
+    transform: 'translateY(-8px)',
+    boxShadow: '0 12px 32px rgba(46, 125, 50, 0.15)',
+    borderColor: 'rgba(46, 125, 50, 0.3)',
+  },
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+    background: 'linear-gradient(90deg, #2E7D32 0%, #66BB6A 100%)',
+    opacity: 0,
+    transition: 'opacity 0.3s ease',
+  },
+  '&:hover::before': {
+    opacity: 1,
+  },
+}));
+
+const StyledSlider = styled(Slider)(({ theme }) => ({
+  color: '#2E7D32',
+  height: 6,
+  '& .MuiSlider-thumb': {
+    width: 20,
+    height: 20,
+    backgroundColor: '#ffffff',
+    border: '3px solid #2E7D32',
+    boxShadow: '0 2px 8px rgba(46, 125, 50, 0.3)',
+    '&:hover': {
+      boxShadow: '0 4px 12px rgba(46, 125, 50, 0.4)',
+    },
+  },
+  '& .MuiSlider-track': {
+    backgroundColor: '#2E7D32',
+    border: 'none',
+  },
+  '& .MuiSlider-rail': {
+    backgroundColor: '#E8F5E9',
+  },
+}));
+
+const OrganicBadge = styled(Chip)(({ theme }) => ({
+  background: 'linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%)',
+  color: '#ffffff',
+  fontWeight: 600,
+  fontSize: '0.75rem',
+  padding: '4px 12px',
+  boxShadow: '0 2px 8px rgba(46, 125, 50, 0.3)',
+  '& .MuiChip-label': {
+    padding: '0 8px',
+  },
+}));
+
+const FairPriceBadge = styled(Chip)(({ theme }) => ({
+  background: 'linear-gradient(135deg, #FF9800 0%, #FFB74D 100%)',
+  color: '#ffffff',
+  fontWeight: 600,
+  fontSize: '0.75rem',
+  padding: '4px 12px',
+  boxShadow: '0 2px 8px rgba(255, 152, 0, 0.3)',
+  '& .MuiChip-label': {
+    padding: '0 8px',
+  },
+}));
+
+const ProductImageBox = styled(Box)(({ theme }) => ({
+  height: 160,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: 'linear-gradient(135deg, #f8faf9 0%, #e8f5e9 100%)',
+  position: 'relative',
+  overflow: 'hidden',
+  '& img': {
+    transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+    maxHeight: '100%',
+    maxWidth: '100%',
+    objectFit: 'cover',
+  },
+  '&:hover img': {
+    transform: 'scale(1.1)',
+  },
+}));
+
+const StyledButton = styled(Button)(({ theme }) => ({
+  borderRadius: 12,
+  padding: '10px 24px',
+  fontWeight: 600,
+  textTransform: 'none',
+  fontFamily: "'Poppins', sans-serif",
+  background: 'linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%)',
+  boxShadow: '0 4px 12px rgba(46, 125, 50, 0.3)',
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    background: 'linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%)',
+    boxShadow: '0 6px 20px rgba(46, 125, 50, 0.4)',
+    transform: 'translateY(-2px)',
+  },
 }));
 
 const seedsSaplingsProducts = [
   {
     name: 'Tomato Seeds',
-    price: 35,
+    farm: 'Seed Masters',
+    location: 'Pune, Maharashtra',
+    price: '₹35',
+    unit: '/ packet',
     image: 'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?w=500&auto=format&fit=crop&q=60',
     rating: 4.5,
+    reviews: 89,
     category: 'Seeds',
-    type: 'Vegetable Seeds'
+    type: 'Vegetable Seeds',
+    organic: true,
+    fairPrice: true
   },
   {
     name: 'Mango Sapling',
-    price: 120,
+    farm: 'Tree Nursery',
+    location: 'Nagpur, Maharashtra',
+    price: '₹120',
+    unit: '/ plant',
     image: 'https://images.unsplash.com/photo-1553279768-865429fa0078?w=500&auto=format&fit=crop&q=60',
     rating: 4.8,
+    reviews: 156,
     category: 'Saplings',
-    type: 'Fruit Tree'
+    type: 'Fruit Tree',
+    organic: false,
+    fairPrice: true
   },
   {
     name: 'Chili Seeds',
-    price: 25,
+    farm: 'Spice Seeds Co',
+    location: 'Guntur, Andhra Pradesh',
+    price: '₹25',
+    unit: '/ packet',
     image: 'https://images.unsplash.com/photo-1594283255769-5d3c6d7a0f1c?w=500&auto=format&fit=crop&q=60',
     rating: 4.3,
+    reviews: 112,
     category: 'Seeds',
-    type: 'Vegetable Seeds'
+    type: 'Vegetable Seeds',
+    organic: true,
+    fairPrice: false
   },
   {
     name: 'Lemon Sapling',
-    price: 150,
+    farm: 'Citrus Gardens',
+    location: 'Coimbatore, Tamil Nadu',
+    price: '₹150',
+    unit: '/ plant',
     image: 'https://images.unsplash.com/photo-1594283255769-5d3c6d7a0f1c?w=500&auto=format&fit=crop&q=60',
     rating: 4.7,
+    reviews: 203,
     category: 'Saplings',
-    type: 'Fruit Tree'
+    type: 'Fruit Tree',
+    organic: true,
+    fairPrice: true
   }
 ];
 
 const categories = ['Seeds', 'Saplings'];
 
+const API = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
+const BACKEND_ORIGIN = API.replace(/\/?api\/?$/, '');
+
 const SeedsSaplingsPage = () => {
   const { search } = useContext(SearchContext);
   const navigate = useNavigate();
   const { addToCart } = useContext(CartContext);
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategories, setSelectedCategories] = useState([]);
   const [priceRange, setPriceRange] = useState([0, 200]);
   const [sortBy, setSortBy] = useState('name');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [serverProducts, setServerProducts] = useState([]);
 
-  let filteredProducts = seedsSaplingsProducts
-    .filter(product =>
-      product.name.toLowerCase().includes(search.toLowerCase()) &&
-      product.price >= priceRange[0] &&
-      product.price <= priceRange[1] &&
-      (selectedCategory === 'all' || product.category === selectedCategory)
+  // Fetch crops from backend with SEEDS_SAPLINGS category
+  useEffect(() => {
+    async function loadCrops() {
+      try {
+        const res = await fetch(`${API}/admin/crops/category/SEEDS_SAPLINGS`);
+        if (res.ok) {
+          const rows = await res.json();
+          const mapped = rows.map(r => {
+            let imageUrl = null;
+            if (r.imageUrl) {
+              if (r.imageUrl.startsWith('http://') || r.imageUrl.startsWith('https://')) {
+                imageUrl = r.imageUrl;
+              } else {
+                const cleanPath = r.imageUrl.startsWith('/') ? r.imageUrl : `/${r.imageUrl}`;
+                imageUrl = `${BACKEND_ORIGIN}${cleanPath}`;
+              }
+            }
+            return {
+              name: r.cropName,
+              farm: r.farmer?.name || 'Farmer',
+              location: r.location,
+              price: `₹${r.price}`,
+              unit: '/ unit',
+              image: imageUrl,
+              rating: 4.5,
+              reviews: Math.floor(Math.random() * 200) + 50,
+              category: r.cropType === 'Seeds & Saplings' ? 'Seeds' : 'Saplings',
+              type: r.cropType || 'Vegetable Seeds',
+              organic: false,
+              fairPrice: true
+            };
+          });
+          setServerProducts(mapped);
+        }
+      } catch (err) {
+        console.error('Failed to load seeds & saplings crops:', err);
+      }
+    }
+    loadCrops();
+  }, []);
+
+  const handleCategoryChange = (category) => {
+    setSelectedCategories(prev =>
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
     );
+  };
+
+  // Combine server products with demo products
+  const allProducts = serverProducts.length > 0 ? [...serverProducts, ...seedsSaplingsProducts] : seedsSaplingsProducts;
+
+  let filteredProducts = allProducts.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase());
+    const price = parseFloat(product.price.replace('₹', ''));
+    const matchesPrice = price >= priceRange[0] && price <= priceRange[1];
+    const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(product.category);
+    return matchesSearch && matchesPrice && matchesCategory;
+  });
 
   if (sortBy === 'price-asc') {
-    filteredProducts = filteredProducts.sort((a, b) => a.price - b.price);
+    filteredProducts = filteredProducts.sort((a, b) => parseFloat(a.price.replace('₹', '')) - parseFloat(b.price.replace('₹', '')));
   } else if (sortBy === 'price-desc') {
-    filteredProducts = filteredProducts.sort((a, b) => b.price - a.price);
+    filteredProducts = filteredProducts.sort((a, b) => parseFloat(b.price.replace('₹', '')) - parseFloat(a.price.replace('₹', '')));
   } else if (sortBy === 'rating') {
     filteredProducts = filteredProducts.sort((a, b) => b.rating - a.rating);
   } else {
     filteredProducts = filteredProducts.sort((a, b) => a.name.localeCompare(b.name));
   }
-
-  const handleCategoryChange = (event) => {
-    setSelectedCategory(event.target.value);
-  };
 
   const handlePriceChange = (event, newValue) => {
     setPriceRange(newValue);
@@ -153,54 +344,149 @@ const SeedsSaplingsPage = () => {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#fafbfc' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f8faf9', fontFamily: "'Poppins', sans-serif", display: 'flex', flexDirection: 'column' }}>
       <NavBar />
-      <Container maxWidth="xl" sx={{ pt: 6, pb: 2 }}>
+      <Container maxWidth="xl" sx={{ pt: { xs: 4, md: 6 }, pb: 4, flex: 1 }}>
         <Grid container spacing={4}>
           {/* Sidebar Filters */}
           <Grid item xs={12} md={3}>
-            <Sidebar elevation={2}>
-              <Typography variant="h6" gutterBottom>Filters</Typography>
-              <Box mb={2}>
-                <Typography variant="subtitle1" fontWeight={600}>Category</Typography>
-                <FormControl fullWidth sx={{ mt: 1 }}>
-                  <InputLabel>Category</InputLabel>
-                  <Select value={selectedCategory} label="Category" onChange={handleCategoryChange}>
-                    <MenuItem value="all">All</MenuItem>
-                    {categories.map((cat) => (
-                      <MenuItem key={cat} value={cat}>{cat}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+            <Sidebar elevation={0}>
+              <Typography 
+                variant="h6" 
+                gutterBottom 
+                sx={{ 
+                  fontWeight: 700, 
+                  color: '#2E7D32',
+                  fontFamily: "'Poppins', sans-serif",
+                  mb: 3
+                }}
+              >
+                Filters
+              </Typography>
+              <Box mb={3}>
+                <Typography 
+                  variant="subtitle1" 
+                  fontWeight={600}
+                  sx={{ 
+                    color: '#1B5E20',
+                    fontFamily: "'Poppins', sans-serif",
+                    mb: 1.5
+                  }}
+                >
+                  Categories
+                </Typography>
+                <FormGroup>
+                  {categories.map((cat) => (
+                    <FormControlLabel
+                      key={cat}
+                      control={
+                        <Checkbox 
+                          checked={selectedCategories.includes(cat)} 
+                          onChange={() => handleCategoryChange(cat)}
+                          sx={{
+                            color: '#2E7D32',
+                            '&.Mui-checked': {
+                              color: '#2E7D32',
+                            },
+                          }}
+                        />
+                      }
+                      label={cat}
+                      sx={{ 
+                        fontFamily: "'Inter', sans-serif",
+                        '& .MuiFormControlLabel-label': {
+                          fontSize: '0.9rem',
+                        }
+                      }}
+                    />
+                  ))}
+                </FormGroup>
               </Box>
-              <Box mb={2}>
-                <Typography variant="subtitle1" fontWeight={600}>Price Range</Typography>
-                <Slider
+              <Box mb={3}>
+                <Typography 
+                  variant="subtitle1" 
+                  fontWeight={600}
+                  sx={{ 
+                    color: '#1B5E20',
+                    fontFamily: "'Poppins', sans-serif",
+                    mb: 1.5
+                  }}
+                >
+                  Price Range
+                </Typography>
+                <StyledSlider
                   value={priceRange}
                   min={0}
                   max={200}
                   onChange={handlePriceChange}
                   valueLabelDisplay="auto"
-                  sx={{ mt: 1, mb: 1 }}
+                  sx={{ mt: 2, mb: 2 }}
                 />
-                <Box display="flex" justifyContent="space-between">
-                  <TextField size="small" value={priceRange[0]} sx={{ width: 60 }} />
-                  <Typography sx={{ mx: 1 }}>to</Typography>
-                  <TextField size="small" value={priceRange[1]} sx={{ width: 60 }} />
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <TextField 
+                    size="small" 
+                    value={`₹${priceRange[0]}`} 
+                    sx={{ 
+                      width: 80,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                        fontFamily: "'Inter', sans-serif",
+                      }
+                    }} 
+                    disabled
+                  />
+                  <Typography sx={{ mx: 1, color: '#666', fontFamily: "'Inter', sans-serif" }}>to</Typography>
+                  <TextField 
+                    size="small" 
+                    value={`₹${priceRange[1]}`} 
+                    sx={{ 
+                      width: 80,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                        fontFamily: "'Inter', sans-serif",
+                      }
+                    }} 
+                    disabled
+                  />
                 </Box>
               </Box>
             </Sidebar>
           </Grid>
           {/* Main Content */}
           <Grid item xs={12} md={9}>
-            <Box display="flex" justifyContent="flex-end" alignItems="center" mb={3}>
-              <FormControl size="small" sx={{ minWidth: 200 }}>
-                <InputLabel>Sort By</InputLabel>
-                <Select value={sortBy} label="Sort By" onChange={handleSortChange}>
-                  <MenuItem value="name">Name</MenuItem>
-                  <MenuItem value="price-asc">Price: Low to High</MenuItem>
-                  <MenuItem value="price-desc">Price: High to Low</MenuItem>
-                  <MenuItem value="rating">Rating</MenuItem>
+            <Box 
+              display="flex" 
+              justifyContent="space-between" 
+              alignItems="center" 
+              mb={4}
+              flexDirection={{ xs: 'column', sm: 'row' }}
+              gap={2}
+            >
+              <Typography 
+                variant="h4" 
+                fontWeight={700} 
+                sx={{ 
+                  color: '#1B5E20',
+                  fontFamily: "'Poppins', sans-serif",
+                }}
+              >
+                Seeds & Saplings
+              </Typography>
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel sx={{ fontFamily: "'Inter', sans-serif" }}>Sort</InputLabel>
+                <Select 
+                  value={sortBy} 
+                  label="Sort" 
+                  onChange={handleSortChange}
+                  sx={{ 
+                    borderRadius: 2,
+                    fontFamily: "'Inter', sans-serif",
+                  }}
+                >
+                  <MenuItem value="name" sx={{ fontFamily: "'Inter', sans-serif" }}>Name</MenuItem>
+                  <MenuItem value="price-asc" sx={{ fontFamily: "'Inter', sans-serif" }}>Price: Low to High</MenuItem>
+                  <MenuItem value="price-desc" sx={{ fontFamily: "'Inter', sans-serif" }}>Price: High to Low</MenuItem>
+                  <MenuItem value="rating" sx={{ fontFamily: "'Inter', sans-serif" }}>Rating</MenuItem>
                 </Select>
               </FormControl>
             </Box>
@@ -208,18 +494,111 @@ const SeedsSaplingsPage = () => {
               {filteredProducts.map((product, idx) => (
                 <Grid item xs={12} sm={6} md={4} key={idx}>
                   <ProductCard>
-                    <Box sx={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f3f3f3' }}>
-                      <img src={product.image} alt={product.name} style={{ maxHeight: '100%', maxWidth: '100%', borderRadius: 8 }} />
+                    <Box sx={{ p: 1.5, pb: 0.5, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        {product.organic && (
+                          <OrganicBadge 
+                            icon={<Verified sx={{ fontSize: 14, color: '#fff !important' }} />}
+                            label="Organic" 
+                            size="small" 
+                          />
+                        )}
+                        {product.fairPrice && (
+                          <FairPriceBadge label="Fair Price" size="small" />
+                        )}
+                      </Box>
                     </Box>
-                    <CardContent>
-                      <Typography variant="h6" fontWeight={700}>{product.name}</Typography>
-                      <Typography variant="body2" color="text.secondary" mb={1}>{product.category}</Typography>
-                      <Typography variant="h6" color="success.main" fontWeight={700}>₹{product.price}</Typography>
+                    <ProductImageBox>
+                      <img 
+                        src={product.image} 
+                        alt={product.name} 
+                        style={{ 
+                          borderRadius: 12,
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover'
+                        }} 
+                      />
+                    </ProductImageBox>
+                    <CardContent sx={{ p: 2 }}>
+                      <Typography 
+                        variant="h6" 
+                        fontWeight={700}
+                        sx={{ 
+                          fontFamily: "'Poppins', sans-serif",
+                          color: '#1B5E20',
+                          mb: 0.75,
+                          fontSize: '1rem'
+                        }}
+                      >
+                        {product.name}
+                      </Typography>
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          color: '#666',
+                          fontFamily: "'Inter', sans-serif",
+                          mb: 1,
+                          fontSize: '0.85rem'
+                        }}
+                      >
+                        {product.farm} • {product.location}
+                      </Typography>
+                      <Stack direction="row" alignItems="center" spacing={1} mb={1}>
+                        <Rating 
+                          value={product.rating || 4.5} 
+                          precision={0.1} 
+                          readOnly 
+                          size="small"
+                          sx={{
+                            '& .MuiRating-iconFilled': {
+                              color: '#FFB300',
+                            },
+                          }}
+                        />
+                        <Typography 
+                          variant="body2" 
+                          sx={{ 
+                            color: '#666',
+                            fontFamily: "'Inter', sans-serif",
+                            fontSize: '0.8rem'
+                          }}
+                        >
+                          ({product.reviews || 0} reviews)
+                        </Typography>
+                      </Stack>
+                      <Typography 
+                        variant="h5" 
+                        sx={{ 
+                          color: '#2E7D32',
+                          fontWeight: 700,
+                          fontFamily: "'Poppins', sans-serif",
+                        }}
+                      >
+                        {product.price} 
+                        <Typography 
+                          component="span" 
+                          sx={{ 
+                            color: '#999',
+                            fontSize: '0.9rem',
+                            fontWeight: 400,
+                            fontFamily: "'Inter', sans-serif",
+                            ml: 0.5
+                          }}
+                        >
+                          {product.unit}
+                        </Typography>
+                      </Typography>
                     </CardContent>
-                    <CardActions sx={{ p: 2, pt: 0 }}>
-                      <Button variant="contained" color="success" fullWidth startIcon={<ShoppingCart />} onClick={() => handleViewProduct(product)}>
+                    <CardActions sx={{ p: 1.5, pt: 0 }}>
+                      <StyledButton 
+                        variant="contained" 
+                        fullWidth 
+                        startIcon={<ShoppingCart />} 
+                        onClick={() => handleViewProduct(product)}
+                      >
                         View Product
-                      </Button>
+                      </StyledButton>
                     </CardActions>
                   </ProductCard>
                 </Grid>
@@ -229,25 +608,106 @@ const SeedsSaplingsPage = () => {
         </Grid>
       </Container>
       {/* Product Details Modal */}
-      <Dialog open={modalOpen} onClose={handleCloseModal} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={modalOpen} 
+        onClose={handleCloseModal} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            fontFamily: "'Poppins', sans-serif",
+          }
+        }}
+      >
         {selectedProduct && (
           <>
-            <DialogTitle>{selectedProduct.name}</DialogTitle>
+            <DialogTitle sx={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, color: '#1B5E20' }}>
+              {selectedProduct.name}
+            </DialogTitle>
             <DialogContent>
-              <Box sx={{ textAlign: 'center', mb: 2 }}>
-                <img src={selectedProduct.image} alt={selectedProduct.name} style={{ maxHeight: 200, borderRadius: 12 }} />
+              <Box sx={{ textAlign: 'center', mb: 3 }}>
+                <img 
+                  src={selectedProduct.image} 
+                  alt={selectedProduct.name} 
+                  style={{ 
+                    maxHeight: 250, 
+                    borderRadius: 16,
+                    width: '100%',
+                    objectFit: 'cover'
+                  }} 
+                />
               </Box>
-              <DialogContentText>
-                <strong>Category:</strong> {selectedProduct.category}<br />
+              <Box sx={{ mb: 2 }}>
+                <Stack direction="row" alignItems="center" spacing={1} mb={1.5}>
+                  <Rating 
+                    value={selectedProduct.rating || 4.5} 
+                    precision={0.1} 
+                    readOnly 
+                    sx={{
+                      '& .MuiRating-iconFilled': {
+                        color: '#FFB300',
+                      },
+                    }}
+                  />
+                  <Typography variant="body2" sx={{ color: '#666', fontFamily: "'Inter', sans-serif" }}>
+                    {selectedProduct.rating} ({selectedProduct.reviews || 0} reviews)
+                  </Typography>
+                </Stack>
+                <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                  {selectedProduct.organic && (
+                    <OrganicBadge 
+                      icon={<Verified sx={{ fontSize: 14, color: '#fff !important' }} />}
+                      label="Organic Certified" 
+                      size="small" 
+                    />
+                  )}
+                  {selectedProduct.fairPrice && (
+                    <FairPriceBadge label="Fair Price" size="small" />
+                  )}
+                </Box>
+              </Box>
+              <DialogContentText sx={{ fontFamily: "'Inter', sans-serif", mb: 2 }}>
+                <strong>Farm:</strong> {selectedProduct.farm}<br />
+                <strong>Location:</strong> {selectedProduct.location}<br />
                 <strong>Type:</strong> {selectedProduct.type}<br />
-                <strong>Price:</strong> ₹{selectedProduct.price}<br />
-                <strong>Rating:</strong> {selectedProduct.rating}
+                <strong>Category:</strong> {selectedProduct.category}<br />
+                <strong>Price:</strong> {selectedProduct.price} {selectedProduct.unit}
               </DialogContentText>
             </DialogContent>
-            <DialogActions sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Button onClick={() => handleAddToCart(selectedProduct)} color="success" variant="outlined">Add to Cart</Button>
-              <Button onClick={() => handleBuyNow(selectedProduct)} color="success" variant="contained">Buy Now</Button>
-              <Button onClick={handleCloseModal} color="primary">Close</Button>
+            <DialogActions sx={{ p: 2, display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+              <Button 
+                onClick={() => handleAddToCart(selectedProduct)} 
+                variant="outlined"
+                sx={{
+                  borderRadius: 2,
+                  fontFamily: "'Poppins', sans-serif",
+                  fontWeight: 600,
+                  borderColor: '#2E7D32',
+                  color: '#2E7D32',
+                  '&:hover': {
+                    borderColor: '#1B5E20',
+                    background: 'rgba(46, 125, 50, 0.1)',
+                  }
+                }}
+              >
+                Add to Cart
+              </Button>
+              <Button 
+                onClick={() => handleBuyNow(selectedProduct)} 
+                variant="contained"
+                sx={{
+                  borderRadius: 2,
+                  fontFamily: "'Poppins', sans-serif",
+                  fontWeight: 600,
+                  background: 'linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%)',
+                  }
+                }}
+              >
+                Buy Now
+              </Button>
             </DialogActions>
           </>
         )}
@@ -261,4 +721,4 @@ const SeedsSaplingsPage = () => {
   );
 };
 
-export default SeedsSaplingsPage; 
+export default SeedsSaplingsPage;

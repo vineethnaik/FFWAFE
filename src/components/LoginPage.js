@@ -8,6 +8,7 @@ import {
   Paper,
   Link,
   Alert,
+  Divider,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
@@ -21,6 +22,7 @@ const LoginPage = () => {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -29,84 +31,109 @@ const LoginPage = () => {
     });
   };
 
-  const handleSubmit = async (e) => {
+  const handlePasswordLogin = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
     if (formData.email && formData.password) {
-      const storedRole = (localStorage.getItem('role') || 'BUYER').toUpperCase();
-      const rolesToTry = storedRole === 'FARMER' ? ['FARMER', 'BUYER'] : ['BUYER', 'FARMER'];
+      setLoading(true);
+      try {
+        // First, check if backend is reachable
+        try {
+          const pingRes = await fetch(`${API_BASE_URL}/auth/ping`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          if (!pingRes.ok) {
+            throw new Error('Backend server is not responding');
+          }
+        } catch (pingErr) {
+          setError(`Cannot connect to backend server at ${API_BASE_URL}. Please ensure the backend is running on port 8080.`);
+          setLoading(false);
+          return;
+        }
 
-      async function attempt(role) {
-        const payload = { email: formData.email, password: formData.password, role };
+        // Login with email and password
+        const payload = { 
+          email: formData.email, 
+          password: formData.password,
+          role: null
+        };
+        
         const res = await fetch(`${API_BASE_URL}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        if (!res.ok) return null;
-        const data = await res.json();
-        return data?.success ? data : null;
-      }
 
-      try {
-        let data = null;
-        for (const role of rolesToTry) {
-          // try with preferred role, then alternate
-          // eslint-disable-next-line no-await-in-loop
-          const result = await attempt(role);
-          if (result) { data = result; break; }
-        }
-        if (data) {
-          localStorage.setItem('userId', String(data.userId));
-          localStorage.setItem('role', data.role);
-          if (data.name) localStorage.setItem('name', data.name);
-          if (data.email) localStorage.setItem('email', data.email);
+        if (res.ok) {
+          const data = await res.json();
+          
+          if (data && data.success) {
+            const userRole = data.role?.toString() || data.role;
+            
+            localStorage.setItem('userId', String(data.userId));
+            localStorage.setItem('role', userRole);
+            localStorage.setItem('name', data.name || 'User');
+            localStorage.setItem('email', data.email || formData.email);
 
-          // ensure farmerId exists for farmer portal
-          if (data.role === 'FARMER') {
-            let farmerId = localStorage.getItem('farmerId');
-            if (!farmerId) {
-              try {
-                const byEmail = await fetch(`${API_BASE_URL}/farmers/by-email?email=${encodeURIComponent(formData.email)}`);
-                if (byEmail.ok) {
-                  const f = await byEmail.json();
-                  farmerId = f.id;
-                  localStorage.setItem('farmerId', farmerId);
-                } else {
-                  // create farmer if not found
-                  const createRes = await fetch(`${API_BASE_URL}/farmers`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: localStorage.getItem('name') || 'Farmer', email: formData.email })
-                  });
-                  if (createRes.ok) {
-                    const f = await createRes.json();
+            // Ensure farmerId exists for farmer portal
+            if (userRole === 'FARMER') {
+              let farmerId = localStorage.getItem('farmerId');
+              if (!farmerId) {
+                try {
+                  const byEmail = await fetch(`${API_BASE_URL}/farmers/by-email?email=${encodeURIComponent(formData.email)}`);
+                  if (byEmail.ok) {
+                    const f = await byEmail.json();
                     farmerId = f.id;
                     localStorage.setItem('farmerId', farmerId);
+                  } else {
+                    const createRes = await fetch(`${API_BASE_URL}/farmers`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ name: localStorage.getItem('name') || 'Farmer', email: formData.email })
+                    });
+                    if (createRes.ok) {
+                      const f = await createRes.json();
+                      farmerId = f.id;
+                      localStorage.setItem('farmerId', farmerId);
+                    }
                   }
-                }
-              } catch (_) {}
+                } catch (_) {}
+              }
             }
-          }
 
-          setSuccess('Login successful! Redirecting...');
-          if (data.role === 'FARMER') {
-            setTimeout(() => navigate('/farmer-dashboard'), 800);
+            setSuccess('Login successful! Redirecting...');
+            
+            if (userRole === 'ADMIN') {
+              setTimeout(() => navigate('/admin-dashboard'), 800);
+            } else if (userRole === 'FARMER') {
+              setTimeout(() => navigate('/farmer-dashboard'), 800);
+            } else {
+              setTimeout(() => navigate('/home'), 800);
+            }
           } else {
-            setTimeout(() => navigate('/home'), 800);
+            setError(data.message || 'Login failed. Please check your credentials.');
           }
         } else {
-          setError('Login failed. Please check your credentials.');
+          const errorData = await res.json().catch(() => ({}));
+          setError(errorData.message || 'Login failed. Please check your credentials.');
         }
       } catch (err) {
-        setError('Could not connect to server.');
+        console.error('Login error:', err);
+        if (err.message && err.message.includes('fetch')) {
+          setError(`Cannot connect to backend server at ${API_BASE_URL}. Please ensure the backend is running on port 8080.`);
+        } else {
+          setError(`Could not connect to server: ${err.message || 'Unknown error'}`);
+        }
+      } finally {
+        setLoading(false);
       }
     } else {
       setError('Please fill in all fields');
     }
   };
-
+  
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#fafbfc', display: 'flex', alignItems: 'center' }}>
       <Container maxWidth="sm">
@@ -129,7 +156,7 @@ const LoginPage = () => {
             </Alert>
           )}
 
-          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
+          <Box component="form" onSubmit={handlePasswordLogin} sx={{ mt: 2 }}>
             <TextField
               margin="normal"
               required
@@ -160,19 +187,22 @@ const LoginPage = () => {
               variant="contained"
               color="success"
               sx={{ mt: 3, mb: 2, py: 1.5 }}
+              disabled={loading}
             >
-              Sign In
+              {loading ? 'Signing In...' : 'Sign In'}
             </Button>
-            <Box sx={{ textAlign: 'center' }}>
-              <Link
-                component="button"
-                variant="body2"
-                onClick={() => navigate('/register')}
-                sx={{ color: '#2E7D32' }}
-              >
-                Don't have an account? Sign Up
-              </Link>
-            </Box>
+          </Box>
+
+          <Divider sx={{ my: 2 }} />
+          <Box sx={{ textAlign: 'center' }}>
+            <Link
+              component="button"
+              variant="body2"
+              onClick={() => navigate('/register')}
+              sx={{ color: '#2E7D32' }}
+            >
+              Don't have an account? Sign Up
+            </Link>
           </Box>
         </Paper>
       </Container>
@@ -180,4 +210,4 @@ const LoginPage = () => {
   );
 };
 
-export default LoginPage; 
+export default LoginPage;

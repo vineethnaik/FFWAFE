@@ -112,6 +112,22 @@ const HomePage = () => {
   const navigate = useNavigate();
   const [cartItems, setCartItems] = useState(0);
   const [wishlistItems, setWishlistItems] = useState(0);
+  const [userName, setUserName] = useState(localStorage.getItem('name') || '');
+  
+  // Update username when component mounts or localStorage changes
+  React.useEffect(() => {
+    const name = localStorage.getItem('name');
+    if (name) {
+      setUserName(name);
+    }
+    const interval = setInterval(() => {
+      const currentName = localStorage.getItem('name');
+      if (currentName !== userName) {
+        setUserName(currentName || '');
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [userName]);
 
   const handleLogout = () => {
     navigate('/login');
@@ -187,7 +203,7 @@ const HomePage = () => {
       >
         <Container>
           <Typography variant="h2" fontWeight={800} letterSpacing={2} mb={2} sx={{ fontSize: { xs: 32, md: 48 } }}>
-            Welcome to AgriZen
+            Welcome to AgriZen{userName ? `, ${userName}` : ''}
           </Typography>
           <Typography variant="h5" mb={4} sx={{ fontWeight: 400 }}>
             India's trusted marketplace for fresh, sustainable, and fairly-priced agricultural products.

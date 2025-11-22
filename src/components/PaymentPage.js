@@ -1,15 +1,33 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import {
   Box, Container, Typography, List, ListItem, ListItemText, Divider, Button,
-  TextField, Dialog, DialogContent, DialogActions, RadioGroup,
-  FormControlLabel, Radio, Fade, Zoom
+  TextField, Dialog, DialogContent, DialogActions, Card, CardContent,
+  CircularProgress, Fade, Zoom
 } from '@mui/material';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import QrCodeIcon from '@mui/icons-material/QrCode';
+import BrokenImageIcon from '@mui/icons-material/BrokenImage';
 import { useNavigate } from 'react-router-dom';
 import NavBar from './NavBar';
 import { CartContext } from './CartContext';
 
-const DUMMY_QR = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=dummyrazorpay@upi&pn=AgriZen';
+
+
+// Place the attached QR image at `Frontend/public/images/razorpay-qr.png`.
+// Use `process.env.PUBLIC_URL` so the path works when the app is served from a subpath.
+const DUMMY_QR = process.env.PUBLIC_URL + '/images/razorpay-qr.jpg';
+
+
+
+// UPI Logos URLs (using publicly available logos)
+const UPI_LOGOS = [
+  { name: 'Google Pay', url: 'https://upload.wikimedia.org/wikipedia/commons/f/f2/Google_Pay_Logo.svg' },
+  { name: 'PhonePe', url: 'https://upload.wikimedia.org/wikipedia/commons/7/71/PhonePe_Logo.svg' },
+  { name: 'Paytm', url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Paytm_logo.png/512px-Paytm_logo.png' },
+  
+];
 
 function generatePaymentId() {
   const ts = Date.now();
@@ -23,25 +41,59 @@ const PaymentPage = () => {
   const [form, setForm] = useState({
     name: '',
     email: '',
-    card: '',
-    expiry: '',
-    cvv: '',
   });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formError, setFormError] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [qrPaid, setQrPaid] = useState(false);
   const [paymentId, setPaymentId] = useState('');
+  const [timer, setTimer] = useState(600); // 10 minutes in seconds
+  const [isTimerActive, setIsTimerActive] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const total = cart.reduce((sum, item) => {
     let price = 0;
     if (typeof item.price === 'string') {
-      price = parseFloat(item.price.replace('₹', ''));
+      price = parseFloat(item.price.replace('₹', '').replace(',', ''));
     } else {
       price = item.price;
     }
-    return sum + price;
+    return sum + (price * (item.quantity || 1));
   }, 0);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (isTimerActive && timer > 0) {
+      const interval = setInterval(() => {
+        setTimer((prev) => {
+          if (prev <= 1) {
+            setIsTimerActive(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [isTimerActive, timer]);
+
+  // Start timer when QR payment method is selected
+  useEffect(() => {
+    if (paymentMethod === 'qr' && !qrPaid) {
+      setTimer(600);
+      setIsTimerActive(true);
+    } else {
+      setIsTimerActive(false);
+    }
+  }, [paymentMethod, qrPaid]);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -57,7 +109,8 @@ const PaymentPage = () => {
       const newPaymentId = generatePaymentId();
       setPaymentId(newPaymentId);
       try {
-        await fetch('http://localhost:8080/payment', {
+        const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
+        await fetch(`${API_BASE_URL}/payments`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -73,10 +126,14 @@ const PaymentPage = () => {
       }
       setDialogOpen(true);
     } else {
+      // QR Payment flow
+      setIsVerifying(true);
       const newPaymentId = generatePaymentId();
       setPaymentId(newPaymentId);
+      
       try {
-        await fetch('http://localhost:8080/payment', {
+        const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
+        await fetch(`${API_BASE_URL}/payments`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -90,16 +147,27 @@ const PaymentPage = () => {
       } catch (err) {
         // Optionally handle error
       }
-      setQrPaid(true);
+      
+      // Simulate verification delay
+      setTimeout(() => {
+        setIsVerifying(false);
+        setShowSuccess(true);
+        setIsTimerActive(false);
+        setTimeout(() => {
+          setQrPaid(true);
+        }, 2000);
+      }, 2000);
     }
   };
 
-  // ✅ Changed redirect path here:
   const handleDialogClose = () => {
     setDialogOpen(false);
+    setShowSuccess(false);
     clearCart();
     setQrPaid(false);
-    navigate('/home'); // ← Redirects to HomePage.js
+    setIsVerifying(false);
+    setPaymentMethod('cod');
+    navigate('/home');
   };
 
   const SuccessDialog = ({ open, onClose, isQrPayment }) => (
@@ -110,26 +178,26 @@ const PaymentPage = () => {
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: 2,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-          overflow: 'hidden'
+          borderRadius: 3,
+          boxShadow: '0 8px 32px rgba(46, 125, 50, 0.2)',
+          overflow: 'hidden',
+          border: '2px solid #A5D6A7'
         }
       }}
     >
-      <DialogContent sx={{ p: 4, textAlign: 'center' }}>
+      <DialogContent sx={{ p: 4, textAlign: 'center', bgcolor: '#f1f8f4' }}>
         <Zoom in={true} style={{ transitionDelay: '100ms' }}>
           <CheckCircleOutlineIcon 
             sx={{ 
               fontSize: 80, 
               color: '#2E7D32',
               mb: 2,
-              animation: 'bounce 1s ease infinite'
             }} 
           />
         </Zoom>
         <Fade in={true} style={{ transitionDelay: '200ms' }}>
           <Typography variant="h5" color="#2E7D32" fontWeight="bold" gutterBottom>
-            Transaction Successful!
+            Payment Received Successfully!
           </Typography>
         </Fade>
         <Fade in={true} style={{ transitionDelay: '300ms' }}>
@@ -140,8 +208,8 @@ const PaymentPage = () => {
           </Typography>
         </Fade>
         <Fade in={true} style={{ transitionDelay: '400ms' }}>
-          <Box sx={{ mt: 3, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+          <Box sx={{ mt: 3, p: 2, bgcolor: 'white', borderRadius: 2, border: '1px solid #A5D6A7' }}>
+            <Typography variant="subtitle2" color="#2E7D32" fontWeight="bold" gutterBottom>
               Order Summary
             </Typography>
             <Typography variant="body2" color="text.secondary">
@@ -156,17 +224,20 @@ const PaymentPage = () => {
           </Box>
         </Fade>
       </DialogContent>
-      <DialogActions sx={{ p: 3, pt: 0 }}>
+      <DialogActions sx={{ p: 3, pt: 0, bgcolor: '#f1f8f4' }}>
         <Button 
           onClick={onClose} 
-          color="success" 
           variant="contained" 
           fullWidth
           sx={{ 
             py: 1.5,
             borderRadius: 2,
             textTransform: 'none',
-            fontSize: '1.1rem'
+            fontSize: '1.1rem',
+            bgcolor: '#2E7D32',
+            '&:hover': {
+              bgcolor: '#1B5E20',
+            }
           }}
         >
           Continue Shopping
@@ -175,70 +246,464 @@ const PaymentPage = () => {
     </Dialog>
   );
 
-  return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#fafbfc' }}>
-      <NavBar />
-      <Container maxWidth="sm" sx={{ py: 8 }}>
-        <Typography variant="h4" fontWeight={700} color="#225c2b" gutterBottom align="center">
-          Payment
-        </Typography>
-        <Typography variant="h6" color="text.secondary" align="center" mb={4}>
-          Review your cart and pay securely.
-        </Typography>
-        <Divider sx={{ my: 2 }} />
-        <List>
-          {cart.length === 0 ? (
-            <ListItem><ListItemText primary="Your cart is empty." /></ListItem>
-          ) : (
-            cart.map((item, idx) => (
-              <ListItem key={idx}>
-                <ListItemText primary={item.name} secondary={`${item.price} ${item.unit}`} />
-              </ListItem>
-            ))
-          )}
-        </List>
-        <Divider sx={{ my: 2 }} />
-        <Typography variant="h6" align="right" mb={2}>
-          Total: <span style={{ color: '#2E7D32' }}>₹{total}</span>
-        </Typography>
-        {cart.length > 0 && (
-          <>
-            <RadioGroup row value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} sx={{ mb: 2 }}>
-              <FormControlLabel value="cod" control={<Radio />} label="Cash on Delivery" />
-              <FormControlLabel value="qr" control={<Radio />} label="Razorpay QR Code" />
-            </RadioGroup>
-            {paymentMethod === 'cod' && (
-              <Box component="form" noValidate autoComplete="off" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <TextField label="Name on Card" name="name" value={form.name} onChange={handleChange} required fullWidth />
-                <TextField label="Email" name="email" value={form.email} onChange={handleChange} required fullWidth type="email" />
-                {formError && <Typography color="error">{formError}</Typography>}
-                <Button variant="contained" color="success" fullWidth onClick={handlePay}>Pay Now</Button>
-              </Box>
-            )}
-            {paymentMethod === 'qr' && !qrPaid && (
-              <Box sx={{ textAlign: 'center', my: 3 }}>
-                <Typography variant="subtitle1" mb={2}>Scan this QR code with any UPI app to pay</Typography>
-                <img src={DUMMY_QR} alt="Razorpay QR" style={{ margin: '0 auto', width: 200, height: 200 }} />
-                <Button variant="contained" color="success" sx={{ mt: 2 }} onClick={handlePay}>I have paid</Button>
-              </Box>
-            )}
-            {paymentMethod === 'qr' && qrPaid && (
-              <SuccessDialog 
-                open={true} 
-                onClose={handleDialogClose} 
-                isQrPayment={true}
-              />
-            )}
-          </>
-        )}
-        {dialogOpen && (
-          <SuccessDialog 
-            open={dialogOpen} 
-            onClose={handleDialogClose} 
-            isQrPayment={false}
+  const PaymentOptionCard = ({ value, icon, title, description, selected, onClick }) => (
+    <Card
+      onClick={onClick}
+      sx={{
+        cursor: 'pointer',
+        borderRadius: 3,
+        border: selected ? '2px solid #2E7D32' : '2px solid #e0e0e0',
+        bgcolor: selected ? '#A5D6A7' : 'white',
+        boxShadow: selected ? '0 4px 20px rgba(46, 125, 50, 0.3)' : '0 2px 8px rgba(0,0,0,0.1)',
+        transition: 'all 0.3s ease',
+        position: 'relative',
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          boxShadow: selected ? '0 6px 24px rgba(46, 125, 50, 0.4)' : '0 4px 12px rgba(0,0,0,0.15)',
+        }
+      }}
+    >
+      <CardContent sx={{ p: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+          <Box
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: 2,
+              bgcolor: selected ? '#2E7D32' : '#f5f5f5',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: selected ? 'white' : '#2E7D32',
+            }}
+          >
+            {icon}
+          </Box>
+          <Box>
+            <Typography variant="h6" fontWeight={600} color={selected ? '#2E7D32' : 'text.primary'}>
+              {title}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {description}
+            </Typography>
+          </Box>
+        </Box>
+        {selected && (
+          <CheckCircleOutlineIcon 
+            sx={{ 
+              color: '#2E7D32', 
+              fontSize: 32,
+              animation: 'pulse 1.5s ease infinite'
+            }} 
           />
         )}
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <Box sx={{ 
+      minHeight: '100vh', 
+      bgcolor: '#f1f8f4',
+      backgroundImage: 'linear-gradient(135deg, #f1f8f4 0%, #e8f5e9 100%)',
+      pb: 4
+    }}>
+      <NavBar />
+      <Container maxWidth="sm" sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
+        <Card
+          sx={{
+            width: '100%',
+            maxWidth: 450,
+            borderRadius: 4,
+            boxShadow: '0 8px 32px rgba(46, 125, 50, 0.15)',
+            bgcolor: 'white',
+            p: 3.75,
+            border: '1px solid #A5D6A7',
+          }}
+        >
+          <Box sx={{ textAlign: 'center', mb: 3 }}>
+            <Typography 
+              variant="h4" 
+              fontWeight={700} 
+              color="#2E7D32" 
+              gutterBottom
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                gap: 1 
+              }}
+            >
+              🌱 Payment
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Review your cart and pay securely
+            </Typography>
+          </Box>
+
+          <Divider sx={{ my: 2, borderColor: '#A5D6A7' }} />
+
+          {cart.length > 0 && (
+            <List sx={{ mb: 2, bgcolor: '#f9f9f9', borderRadius: 2, p: 1 }}>
+              {cart.map((item, idx) => (
+                <ListItem key={idx} sx={{ py: 0.5 }}>
+                  <ListItemText 
+                    primary={item.name} 
+                    secondary={`${item.price} ${item.unit || ''} x ${item.quantity || 1}`} 
+                  />
+                </ListItem>
+              ))}
+            </List>
+          )}
+
+          <Divider sx={{ my: 2, borderColor: '#A5D6A7' }} />
+
+          <Box sx={{ textAlign: 'center', mb: 3 }}>
+            <Typography variant="h5" fontWeight={700} color="#2E7D32">
+              Total: ₹{total}
+            </Typography>
+          </Box>
+
+          {cart.length > 0 && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle1" fontWeight={600} color="#2E7D32" mb={2} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                🌿 Select Payment Method
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <PaymentOptionCard
+                  value="cod"
+                  icon={<LocalShippingIcon />}
+                  title="Cash on Delivery"
+                  description="Pay when you receive"
+                  selected={paymentMethod === 'cod'}
+                  onClick={() => setPaymentMethod('cod')}
+                />
+                <PaymentOptionCard
+                  value="qr"
+                  icon={<QrCodeIcon />}
+                  title="QR for UPI payment"
+                  description="Scan and pay instantly"
+                  selected={paymentMethod === 'qr'}
+                  onClick={() => setPaymentMethod('qr')}
+                />
+              </Box>
+            </Box>
+          )}
+
+          {paymentMethod === 'cod' && (
+            <Box component="form" noValidate autoComplete="off" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <TextField 
+                label="Name" 
+                name="name" 
+                value={form.name} 
+                onChange={handleChange} 
+                required 
+                fullWidth
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '&:hover fieldset': {
+                      borderColor: '#A5D6A7',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#2E7D32',
+                    },
+                  },
+                }}
+              />
+              <TextField 
+                label="Email" 
+                name="email" 
+                value={form.email} 
+                onChange={handleChange} 
+                required 
+                fullWidth 
+                type="email"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '&:hover fieldset': {
+                      borderColor: '#A5D6A7',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#2E7D32',
+                    },
+                  },
+                }}
+              />
+              {formError && <Typography color="error">{formError}</Typography>}
+              <Button 
+                variant="contained" 
+                fullWidth 
+                onClick={handlePay}
+                sx={{
+                  py: 1.5,
+                  borderRadius: 2,
+                  bgcolor: '#2E7D32',
+                  '&:hover': {
+                    bgcolor: '#1B5E20',
+                  },
+                  textTransform: 'none',
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                }}
+              >
+                Pay Now
+              </Button>
+            </Box>
+          )}
+
+          {paymentMethod === 'qr' && !qrPaid && (
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="h6" fontWeight={600} color="#2E7D32" mb={1}>
+                Razorpay QR Code
+              </Typography>
+              
+              {/* UPI Logos */}
+              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1.5, mb: 2, flexWrap: 'wrap' }}>
+                {UPI_LOGOS.map((logo, idx) => (
+                  <Box
+                    key={idx}
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 1,
+                      overflow: 'hidden',
+                      border: '1px solid #e0e0e0',
+                      bgcolor: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      p: 0.5,
+                    }}
+                  >
+                    <img 
+                      src={logo.url} 
+                      alt={logo.name} 
+                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  </Box>
+                ))}
+              </Box>
+
+              <Box
+                sx={{
+                  p: 2,
+                  bgcolor: '#f9f9f9',
+                  borderRadius: 2,
+                  border: timer === 0 ? '2px solid #f44336' : '1px solid #A5D6A7',
+                  mb: 2,
+                  opacity: timer === 0 ? 0.6 : 1,
+                }}
+              >
+                {!imageError ? (
+                  <img 
+                    src={DUMMY_QR} 
+                    alt="Razorpay QR" 
+                    onError={() => setImageError(true)}
+                    style={{ 
+                      width: 400, 
+                      height: 300, 
+                      display: 'block',
+                      margin: '0 auto',
+                      filter: timer === 0 ? 'grayscale(100%)' : 'none',
+                      objectFit: 'contain',
+                    }} 
+                  />
+                ) : (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 4 }}>
+                    <BrokenImageIcon sx={{ fontSize: 48, color: '#9e9e9e', mb: 1 }} />
+                    <Typography variant="body2" color="text.secondary">
+                      QR image not found.
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+                      Place `razorpay-qr.png` in `Frontend/public/images/` and reload the app.
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+                      Image URL: <strong>{DUMMY_QR}</strong>
+                    </Typography>
+                    <Button
+                      component="a"
+                      href={DUMMY_QR}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{ mt: 1, textTransform: 'none' }}
+                      size="small"
+                    >
+                      Open image in new tab
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+
+              <Typography 
+                variant="h6" 
+                fontWeight={700} 
+                color="#2E7D32" 
+                mb={2}
+                sx={{ fontSize: '1.3rem' }}
+              >
+                Amount to Pay: ₹{total}
+              </Typography>
+
+              {/* Timer */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 1,
+                  mb: 2,
+                  p: 1.5,
+                  bgcolor: timer === 0 ? '#ffebee' : '#e8f5e9',
+                  borderRadius: 2,
+                  border: `1px solid ${timer === 0 ? '#f44336' : '#A5D6A7'}`,
+                }}
+              >
+                <AccessTimeIcon sx={{ color: timer === 0 ? '#f44336' : '#2E7D32' }} />
+                <Typography 
+                  variant="body1" 
+                  fontWeight={600}
+                  color={timer === 0 ? '#f44336' : '#2E7D32'}
+                >
+                  QR valid for: {formatTime(timer)}
+                </Typography>
+              </Box>
+
+              {/* Step-by-step instructions */}
+              <Box
+                sx={{
+                  p: 2,
+                  bgcolor: '#f1f8f4',
+                  borderRadius: 2,
+                  border: '1px solid #A5D6A7',
+                  mb: 2,
+                  textAlign: 'left',
+                }}
+              >
+                <Typography variant="subtitle2" fontWeight={600} color="#2E7D32" mb={1.5}>
+                  📋 Payment Instructions
+                </Typography>
+                {[
+                  'Step 1: Open any UPI app',
+                  'Step 2: Scan the QR code',
+                  `Step 3: Enter amount (₹${total})`,
+                  'Step 4: Complete payment',
+                  'Step 5: Click "I HAVE PAID"'
+                ].map((step, idx) => (
+                  <Typography 
+                    key={idx} 
+                    variant="body2" 
+                    color="text.secondary" 
+                    sx={{ mb: 0.5, pl: 1 }}
+                  >
+                    {step}
+                  </Typography>
+                ))}
+              </Box>
+
+              {/* Success popup overlay */}
+              {showSuccess && (
+                <Fade in={showSuccess}>
+                  <Box
+                    sx={{
+                      position: 'fixed',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      bgcolor: 'rgba(0,0,0,0.5)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      zIndex: 9999,
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        bgcolor: 'white',
+                        borderRadius: 3,
+                        p: 4,
+                        textAlign: 'center',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                        border: '2px solid #2E7D32',
+                      }}
+                    >
+                      <CheckCircleOutlineIcon 
+                        sx={{ fontSize: 60, color: '#2E7D32', mb: 2 }} 
+                      />
+                      <Typography variant="h6" fontWeight={700} color="#2E7D32">
+                        Payment Received Successfully!
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Fade>
+              )}
+
+              <Button 
+                variant="contained" 
+                fullWidth
+                onClick={handlePay}
+                disabled={isVerifying || timer === 0}
+                sx={{
+                  py: 1.5,
+                  borderRadius: 2,
+                  bgcolor: isVerifying ? '#1B5E20' : '#2E7D32',
+                  '&:hover': {
+                    bgcolor: '#1B5E20',
+                  },
+                  '&:disabled': {
+                    bgcolor: '#9e9e9e',
+                  },
+                  textTransform: 'none',
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                  transition: 'all 0.3s ease',
+                }}
+              >
+                {isVerifying ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CircularProgress size={20} sx={{ color: 'white' }} />
+                    Verifying Payment…
+                  </Box>
+                ) : (
+                  'I HAVE PAID'
+                )}
+              </Button>
+            </Box>
+          )}
+
+          {paymentMethod === 'qr' && qrPaid && (
+            <SuccessDialog 
+              open={true} 
+              onClose={handleDialogClose} 
+              isQrPayment={true}
+            />
+          )}
+        </Card>
       </Container>
+
+      {dialogOpen && (
+        <SuccessDialog 
+          open={dialogOpen} 
+          onClose={handleDialogClose} 
+          isQrPayment={false}
+        />
+      )}
+
+      <style>
+        {`
+          @keyframes pulse {
+            0%, 100% {
+              transform: scale(1);
+            }
+            50% {
+              transform: scale(1.1);
+            }
+          }
+        `}
+      </style>
     </Box>
   );
 };

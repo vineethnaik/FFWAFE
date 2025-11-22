@@ -50,6 +50,7 @@ const RegisterPage = () => {
         name: formData.firstName + ' ' + formData.lastName,
         email: formData.email,
         password: formData.password,
+        mobileNumber: formData.phone,
         role: formData.role === 'Farmer' ? 'FARMER' : 'BUYER'
       };
       try {
@@ -61,6 +62,12 @@ const RegisterPage = () => {
         });
         if (authRes.ok) {
           const auth = await authRes.json();
+          // Store user information
+          localStorage.setItem('userId', String(auth.userId));
+          localStorage.setItem('role', auth.role);
+          localStorage.setItem('name', auth.name || payload.name);
+          localStorage.setItem('email', auth.email || payload.email);
+          
           // If role is Farmer, ensure Farmer record exists and store farmerId
           if (payload.role === 'FARMER') {
             // try to fetch by email first
@@ -80,8 +87,6 @@ const RegisterPage = () => {
               }
             }
           }
-          localStorage.setItem('role', payload.role);
-          localStorage.setItem('userId', String(auth.userId));
           setSuccess('Registration successful! Please login.');
           setTimeout(() => navigate('/login'), 1500);
         } else {
@@ -159,10 +164,12 @@ const RegisterPage = () => {
                 <TextField
                   required
                   fullWidth
-                  label="Phone Number"
+                  label="Mobile Number"
                   name="phone"
+                  placeholder="+1234567890"
                   value={formData.phone}
                   onChange={handleChange}
+                  helperText="Include country code (e.g., +1234567890)"
                 />
               </Grid>
               <Grid item xs={12} sm={6}>

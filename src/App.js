@@ -13,6 +13,13 @@ import CartPage from './components/CartPage';
 import PaymentPage from './components/PaymentPage';
 import AboutPage from './components/AboutPage';
 import FarmerDashboard from './components/FarmerDashboard';
+import AboutFarming from './components/AboutFarming';
+import FarmingTips from './components/FarmingTips';
+import AdminDashboard from './components/AdminDashboard';
+import AdminLogin from './components/AdminLogin';
+import AdminRoute from './components/AdminRoute';
+import FarmerRoute from './components/FarmerRoute';
+import BuyerRoute from './components/BuyerRoute';
 
 function App() {
   return (
@@ -23,15 +30,25 @@ function App() {
             <Route path="/" element={<WelcomePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
-            <Route path="/home" element={<HomePage />} />
-            <Route path="/products" element={<ProductsPage />} />
-            <Route path="/new-arrival" element={<NewArrivalPage />} />
-            <Route path="/seeds-saplings" element={<SeedsSaplingsPage />} />
-            <Route path="/cart" element={<CartPage />} />
-            <Route path="/payment" element={<PaymentPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/farmer" element={<FarmerDashboard farmerId={localStorage.getItem('farmerId')} />} />
-            <Route path="/farmer-dashboard" element={<FarmerDashboard farmerId={localStorage.getItem('farmerId')} />} />
+            
+            {/* Buyer routes - protected from farmers */}
+            <Route path="/home" element={<BuyerRoute><HomePage /></BuyerRoute>} />
+            <Route path="/products" element={<BuyerRoute><ProductsPage /></BuyerRoute>} />
+            <Route path="/new-arrival" element={<BuyerRoute><NewArrivalPage /></BuyerRoute>} />
+            <Route path="/seeds-saplings" element={<BuyerRoute><SeedsSaplingsPage /></BuyerRoute>} />
+            <Route path="/cart" element={<BuyerRoute><CartPage /></BuyerRoute>} />
+            <Route path="/payment" element={<BuyerRoute><PaymentPage /></BuyerRoute>} />
+            <Route path="/about" element={<BuyerRoute><AboutPage /></BuyerRoute>} />
+            
+            {/* Farmer routes - protected */}
+            <Route path="/farmer" element={<FarmerRoute><FarmerDashboard farmerId={localStorage.getItem('farmerId')} /></FarmerRoute>} />
+            <Route path="/farmer-dashboard" element={<FarmerRoute><FarmerDashboard farmerId={localStorage.getItem('farmerId')} /></FarmerRoute>} />
+            <Route path="/farmer/about-farming" element={<FarmerRoute><AboutFarming /></FarmerRoute>} />
+            <Route path="/farmer/farming-tips" element={<FarmerRoute><FarmingTips /></FarmerRoute>} />
+            
+            {/* Admin routes */}
+            <Route path="/admin" element={<AdminRoute />} />
+            <Route path="/admin-dashboard" element={<AdminDashboard />} />
           </Routes>
         </Router>
       </CartProvider>

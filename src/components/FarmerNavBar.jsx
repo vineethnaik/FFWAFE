@@ -1,42 +1,30 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import {
   AppBar,
   Toolbar,
   Typography,
   Button,
   IconButton,
-  Badge,
   Box,
   Menu,
   MenuItem,
-  InputBase,
-  Paper,
+  Container,
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogContentText,
   DialogActions,
-  Container,
-  Tooltip,
   Divider
 } from '@mui/material';
-import { styled, alpha } from '@mui/material/styles';
+import { styled } from '@mui/material/styles';
 import {
-  Home as HomeIcon,
-  LocalFlorist as ProductsIcon,
-  NewReleases as NewArrivalIcon,
-  Park as SeedIcon,
-  Info as AboutIcon,
-  ShoppingCart as CartIcon,
-  Favorite as WishlistIcon,
+  Dashboard as DashboardIcon,
+  Info as InfoIcon,
+  Lightbulb as TipsIcon,
   Logout as LogoutIcon,
-  Search as SearchIcon,
   Menu as MenuIcon,
   AccountCircle as AccountCircleIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { SearchContext } from './SearchContext';
-import { CartContext } from './CartContext';
 
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
   background: 'linear-gradient(135deg, #1B5E20 0%, #2E7D32 50%, #4CAF50 100%)',
@@ -114,73 +102,29 @@ const IconCircle = styled(IconButton)(({ theme }) => ({
   },
 }));
 
-const SearchBox = styled(Paper)(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  background: alpha(theme.palette.common.white, 0.95),
-  borderRadius: 25,
-  marginLeft: theme.spacing(2),
-  marginRight: theme.spacing(2),
-  width: 300,
-  border: `2px solid ${alpha('#2E7D32', 0.2)}`,
-  boxShadow: '0 2px 12px rgba(46, 125, 50, 0.1)',
-  transition: 'all 0.3s ease',
-  '&:focus-within': {
-    borderColor: '#2E7D32',
-    boxShadow: '0 4px 16px rgba(46, 125, 50, 0.2)',
-    transform: 'scale(1.02)',
-  },
-  [theme.breakpoints.down('sm')]: {
-    width: 160,
-    marginLeft: theme.spacing(1),
-    marginRight: theme.spacing(1),
-  },
-}));
-
-const SearchInput = styled(InputBase)(({ theme }) => ({
-  marginLeft: theme.spacing(1.5),
-  flex: 1,
-  color: theme.palette.text.primary,
-  fontFamily: "'Inter', sans-serif",
-  '& .MuiInputBase-input': {
-    padding: theme.spacing(1, 1, 1, 0),
-    transition: theme.transitions.create('width'),
-    width: '100%',
-    fontSize: '0.9rem',
-  },
-}));
-
-const getPages = () => {
-  // Admin link removed - only accessible via direct /admin URL
+const getFarmerPages = () => {
   return [
-    { name: 'Home', path: '/home' },
-    { name: 'Products', path: '/products' },
-    { name: 'New Arrival', path: '/new-arrival' },
-    { name: 'Seeds & Saplings', path: '/seeds-saplings' },
-    { name: 'About Us', path: '/about' },
+    { name: 'Dashboard', path: '/farmer-dashboard', icon: <DashboardIcon /> },
+    { name: 'About Farming', path: '/farmer/about-farming', icon: <InfoIcon /> },
+    { name: 'Farming Tips', path: '/farmer/farming-tips', icon: <TipsIcon /> },
   ];
 };
 
-function NavBar() {
+function FarmerNavBar() {
   const navigate = useNavigate();
-  const { cart } = React.useContext(CartContext);
-  const { search, setSearch } = useContext(SearchContext);
   const [anchorElNav, setAnchorElNav] = React.useState(null);
-  const [cartOpen, setCartOpen] = React.useState(false);
   const [profileOpen, setProfileOpen] = React.useState(false);
-  const [userName, setUserName] = React.useState(localStorage.getItem('name') || 'Guest');
+  const [userName, setUserName] = React.useState(localStorage.getItem('name') || 'Farmer');
   
-  // Update username when localStorage changes
   React.useEffect(() => {
     const handleStorageChange = () => {
-      setUserName(localStorage.getItem('name') || 'Guest');
+      setUserName(localStorage.getItem('name') || 'Farmer');
     };
     window.addEventListener('storage', handleStorageChange);
-    // Also check on mount and periodically
     const interval = setInterval(() => {
       const name = localStorage.getItem('name');
       if (name !== userName) {
-        setUserName(name || 'Guest');
+        setUserName(name || 'Farmer');
       }
     }, 500);
     return () => {
@@ -202,22 +146,28 @@ function NavBar() {
     handleCloseNavMenu();
   };
 
-  const handleSearchChange = (event) => {
-    setSearch(event.target.value);
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('userId');
+      localStorage.removeItem('role');
+      localStorage.removeItem('name');
+      localStorage.removeItem('email');
+      localStorage.removeItem('farmerId');
+    } catch (e) {}
+    navigate('/login');
   };
 
   return (
     <StyledAppBar position="sticky">
       <Container maxWidth="xl">
         <Toolbar disableGutters sx={{ minHeight: 72, py: 1 }}>
-          {/* Modern Logo */}
-          <Logo variant="h5" component="div" onClick={() => handleNavigation('/home')}>
+          <Logo variant="h5" component="div" onClick={() => handleNavigation('/farmer-dashboard')}>
             <img 
               src="https://img.icons8.com/ios-filled/50/ffffff/plant-under-sun.png" 
               alt="logo" 
               style={{height: 36, marginRight: 4}} 
             />
-            AgriZen
+            AgriZen Farmer
           </Logo>
 
           {/* Mobile menu */}
@@ -254,13 +204,16 @@ function NavBar() {
                 },
               }}
             >
-              {getPages().map((page) => (
+              {getFarmerPages().map((page) => (
                 <MenuItem 
                   key={page.name} 
                   onClick={() => handleNavigation(page.path)}
                   sx={{ fontFamily: "'Inter', sans-serif" }}
                 >
-                  <Typography textAlign="center">{page.name}</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {page.icon}
+                    <Typography textAlign="center">{page.name}</Typography>
+                  </Box>
                 </MenuItem>
               ))}
             </Menu>
@@ -268,7 +221,7 @@ function NavBar() {
 
           {/* Desktop menu */}
           <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, justifyContent: 'center' }}>
-            {getPages().map((page) => (
+            {getFarmerPages().map((page) => (
               <NavButton
                 key={page.name}
                 onClick={() => handleNavigation(page.path)}
@@ -278,16 +231,6 @@ function NavBar() {
               </NavButton>
             ))}
           </Box>
-
-          {/* Search Box */}
-          <SearchBox>
-            <SearchIcon sx={{ ml: 1.5, color: '#2E7D32' }} />
-            <SearchInput
-              placeholder="Search products..."
-              value={search}
-              onChange={handleSearchChange}
-            />
-          </SearchBox>
 
           {/* User Greeting */}
           <Typography 
@@ -302,17 +245,8 @@ function NavBar() {
             Hi, {userName}!
           </Typography>
 
-          {/* Cart and Profile */}
+          {/* Profile and Logout */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <IconCircle
-              size="large"
-              aria-label="cart"
-              onClick={() => handleNavigation('/cart')}
-            >
-              <Badge badgeContent={cart.length} color="error">
-                <CartIcon />
-              </Badge>
-            </IconCircle>
             <IconCircle
               size="large"
               aria-label="profile"
@@ -320,86 +254,18 @@ function NavBar() {
             >
               <AccountCircleIcon />
             </IconCircle>
+            <IconCircle
+              size="large"
+              aria-label="logout"
+              onClick={handleLogout}
+              title="Logout"
+            >
+              <LogoutIcon />
+            </IconCircle>
           </Box>
         </Toolbar>
       </Container>
-      <Dialog 
-        open={cartOpen} 
-        onClose={() => setCartOpen(false)} 
-        maxWidth="sm" 
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            fontFamily: "'Poppins', sans-serif",
-          }
-        }}
-      >
-        <DialogTitle sx={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700 }}>
-          Cart Items
-        </DialogTitle>
-        <DialogContent>
-          {cart.length === 0 ? (
-            <DialogContentText sx={{ fontFamily: "'Inter', sans-serif" }}>
-              Your cart is empty.
-            </DialogContentText>
-          ) : (
-            cart.map((item, idx) => (
-              <Box 
-                key={idx} 
-                sx={{ 
-                  mb: 2, 
-                  p: 2, 
-                  borderBottom: '1px solid #eee', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between',
-                  borderRadius: 2,
-                  '&:hover': {
-                    background: '#f5f5f5',
-                  }
-                }}
-              >
-                <span style={{ fontFamily: "'Inter', sans-serif" }}>
-                  <strong>{item.name}</strong> — {item.price} {item.unit}
-                </span>
-                <Button 
-                  size="small" 
-                  color="error" 
-                  onClick={() => { setCartOpen(false); navigate('/cart'); }}
-                  sx={{ fontFamily: "'Inter', sans-serif" }}
-                >
-                  Remove
-                </Button>
-              </Box>
-            ))
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button 
-            onClick={() => setCartOpen(false)} 
-            sx={{ fontFamily: "'Inter', sans-serif" }}
-          >
-            Close
-          </Button>
-          {cart.length > 0 && (
-            <Button 
-              onClick={() => { setCartOpen(false); navigate('/payment'); }} 
-              variant="contained"
-              sx={{
-                fontFamily: "'Poppins', sans-serif",
-                fontWeight: 600,
-                background: 'linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%)',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%)',
-                }
-              }}
-            >
-              Proceed to Payment
-            </Button>
-          )}
-        </DialogActions>
-      </Dialog>
+
       {/* Profile Dialog */}
       <Dialog 
         open={profileOpen} 
@@ -414,7 +280,7 @@ function NavBar() {
         }}
       >
         <DialogTitle sx={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700 }}>
-          User Profile
+          Farmer Profile
         </DialogTitle>
         <DialogContent>
           <Box sx={{ textAlign: 'center', py: 2 }}>
@@ -424,7 +290,7 @@ function NavBar() {
               gutterBottom
               sx={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700 }}
             >
-              {localStorage.getItem('name') || 'Guest User'}
+              {localStorage.getItem('name') || 'Farmer'}
             </Typography>
             <Typography 
               variant="body2" 
@@ -438,7 +304,7 @@ function NavBar() {
               variant="body2"
               sx={{ fontFamily: "'Inter', sans-serif" }}
             >
-              <strong>Role:</strong> {localStorage.getItem('role') || 'Guest'}
+              <strong>Role:</strong> Farmer
             </Typography>
           </Box>
         </DialogContent>
@@ -451,15 +317,8 @@ function NavBar() {
           </Button>
           <Button
             onClick={() => {
-              try {
-                localStorage.removeItem('userId');
-                localStorage.removeItem('role');
-                localStorage.removeItem('name');
-                localStorage.removeItem('email');
-                localStorage.removeItem('farmerId');
-              } catch (e) {}
               setProfileOpen(false);
-              navigate('/login');
+              handleLogout();
             }}
             variant="contained"
             sx={{
@@ -479,4 +338,5 @@ function NavBar() {
   );
 }
 
-export default NavBar;
+export default FarmerNavBar;
+

@@ -4,20 +4,21 @@ import axios from 'axios';
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
 
 function FarmerCropsList({ farmerId }) {
+	const effectiveFarmerId = farmerId || localStorage.getItem('farmerId');
 	const [crops, setCrops] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState('');
 
 	useEffect(() => {
 		async function fetchCrops() {
-			if (!farmerId) {
+			if (!effectiveFarmerId) {
 				setError('Missing farmerId');
 				return;
 			}
 			setLoading(true);
 			setError('');
 			try {
-				const res = await axios.get(`${API_BASE_URL}/farmers/${farmerId}/crops`);
+				const res = await axios.get(`${API_BASE_URL}/farmers/${effectiveFarmerId}/crops`);
 				setCrops(res.data || []);
 			} catch (err) {
 				const msg = err?.response?.data?.message || err.message || 'Failed to load crops.';

@@ -1,9 +1,10 @@
 import React from 'react';
 import AddCropForm from './AddCropForm';
 import FarmerCropsList from './FarmerCropsList';
-import NavBar from './NavBar';
+import FarmerNavBar from './FarmerNavBar';
 
 function FarmerDashboard({ farmerId }) {
+	const effectiveFarmerId = farmerId || localStorage.getItem('farmerId');
 	const heroStyle = {
 		background: 'linear-gradient(rgba(34,92,43,0.85), rgba(34,92,43,0.85)), url(https://images.unsplash.com/photo-1500937386664-56d1dfef3854?q=80&w=1600&auto=format&fit=crop) center/cover no-repeat',
 		color: 'white',
@@ -32,7 +33,7 @@ function FarmerDashboard({ farmerId }) {
 
 	return (
 		<div style={{ background: '#f5f9f5', minHeight: '100vh' }}>
-			<NavBar />
+			<FarmerNavBar />
 			<header style={heroStyle}>
 				<h1 style={{ fontSize: 36, margin: 0 }}>Farmer Portal</h1>
 				<p style={{ opacity: 0.95, marginTop: 8 }}>Manage your crop listings and showcase fresh produce to buyers.</p>
@@ -41,11 +42,11 @@ function FarmerDashboard({ farmerId }) {
 				<section style={section}>
 					<h2 style={heading}>Add New Crop</h2>
 					<p style={{ color: '#4b5a4f', marginTop: 0 }}>Fill the details below to publish a new listing. High-quality images help your crops stand out.</p>
-					<AddCropForm farmerId={farmerId} />
+					<AddCropForm farmerId={effectiveFarmerId} />
 				</section>
 				<section style={section}>
 					<h2 style={heading}>Your Listings</h2>
-					<FarmerCropsList farmerId={farmerId} />
+					<FarmerCropsList farmerId={effectiveFarmerId} />
 				</section>
 			</main>
 		</div>

@@ -10,68 +10,90 @@ import {
   Button
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import NavBar from './NavBar';
 
 const AboutPage = () => {
   const teamMembers = [
     {
-      name: 'ESLAVATH VINAATH NAIK',
-      role: 'Lead Developer',
-      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=60'
+      name: 'Charan Teja',
+      role: 'Team Member',
+      image: '/images/charan-teja.jpg'
     },
     {
-      name: 'JYOTSNA TALASILA',
-      role: 'UI/UX Designer',
-      image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&auto=format&fit=crop&q=60'
+      name: 'T. Mohanth',
+      role: 'Team Member',
+      image: '/images/mohanth.jpg'
     },
     {
-      name: 'BHARGAVI',
-      role: 'Backend Developer',
-      image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=500&auto=format&fit=crop&q=60'
+      name: 'E. Vineeth Naik',
+      role: 'Team Member',
+      image: '/images/vineeth-naik.jpg'
     }
   ];
 
   const navigate = useNavigate();
 
   return (
-    <Container maxWidth="lg" sx={{ py: 8 }}>
-      <Typography variant="h3" component="h1" gutterBottom align="center">
-        About AgriZen
-      </Typography>
-      <Box sx={{ textAlign: 'center', mb: 3 }}>
-        <Button variant="contained" color="success" onClick={() => navigate('/home')}>Go to Home</Button>
-      </Box>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f8faf9' }}>
+      <NavBar />
+      <Container maxWidth="lg" sx={{ py: 8 }}>
+        <Typography variant="h3" component="h1" gutterBottom align="center" sx={{ color: '#1B5E20', fontWeight: 700, fontFamily: "'Poppins', sans-serif" }}>
+          About AgriZen
+        </Typography>
       
       <Box sx={{ my: 6 }}>
-        <Typography variant="h5" gutterBottom>
+        <Typography variant="h5" gutterBottom sx={{ fontFamily: "'Poppins', sans-serif", fontWeight: 600, color: '#1B5E20' }}>
           Our Mission
         </Typography>
-        <Typography variant="body1" paragraph>
+        <Typography variant="body1" paragraph sx={{ fontFamily: "'Inter', sans-serif", lineHeight: 1.8 }}>
           AgriZen is dedicated to revolutionizing the agricultural marketplace by creating a direct connection between farmers and buyers. 
           Our platform empowers farmers to showcase their products while providing buyers with access to fresh, high-quality agricultural goods.
         </Typography>
-        <Typography variant="body1" paragraph>
+        <Typography variant="body1" paragraph sx={{ fontFamily: "'Inter', sans-serif", lineHeight: 1.8 }}>
           We believe in sustainable farming practices and fair trade, ensuring that both farmers and consumers benefit from our marketplace.
         </Typography>
       </Box>
 
       <Box sx={{ my: 6 }}>
-        <Typography variant="h5" gutterBottom>
+        <Typography variant="h5" gutterBottom sx={{ fontFamily: "'Poppins', sans-serif", fontWeight: 600, color: '#1B5E20' }}>
           Our Team
         </Typography>
         <Grid container spacing={4} sx={{ mt: 2 }}>
           {teamMembers.map((member) => (
-            <Grid item xs={12} md={4} key={member.name}>
-              <Card sx={{ height: '100%' }}>
-                <CardContent sx={{ textAlign: 'center' }}>
+            <Grid item xs={12} sm={6} md={4} key={member.name}>
+              <Card 
+                sx={{ 
+                  height: '100%', 
+                  borderRadius: 3,
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+                  transition: 'transform 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-8px)',
+                    boxShadow: '0 8px 30px rgba(0, 0, 0, 0.15)',
+                  }
+                }}
+              >
+                <CardContent sx={{ textAlign: 'center', p: 3 }}>
                   <Avatar
                     src={member.image}
                     alt={member.name}
-                    sx={{ width: 120, height: 120, mx: 'auto', mb: 2 }}
+                    sx={{ 
+                      width: 150, 
+                      height: 150, 
+                      mx: 'auto', 
+                      mb: 2,
+                      border: '4px solid #2E7D32',
+                      boxShadow: '0 4px 15px rgba(46, 125, 50, 0.3)'
+                    }}
+                    onError={(e) => {
+                      // Fallback to a placeholder if image fails to load
+                      e.target.src = 'https://via.placeholder.com/150?text=' + encodeURIComponent(member.name.split(' ')[0]);
+                    }}
                   />
-                  <Typography variant="h6" gutterBottom>
+                  <Typography variant="h6" gutterBottom sx={{ fontFamily: "'Poppins', sans-serif", fontWeight: 600, color: '#1B5E20' }}>
                     {member.name}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" color="text.secondary" sx={{ fontFamily: "'Inter', sans-serif" }}>
                     {member.role}
                   </Typography>
                 </CardContent>
@@ -82,10 +104,10 @@ const AboutPage = () => {
       </Box>
 
       <Box sx={{ my: 6 }}>
-        <Typography variant="h5" gutterBottom>
+        <Typography variant="h5" gutterBottom sx={{ fontFamily: "'Poppins', sans-serif", fontWeight: 600, color: '#1B5E20' }}>
           Our Vision
         </Typography>
-        <Typography variant="body1" paragraph>
+        <Typography variant="body1" paragraph sx={{ fontFamily: "'Inter', sans-serif", lineHeight: 1.8 }}>
           We envision a future where technology bridges the gap between farmers and consumers, 
           creating a more sustainable and efficient agricultural ecosystem. Through AgriZen, 
           we aim to support local farming communities while providing consumers with access 
@@ -93,6 +115,7 @@ const AboutPage = () => {
         </Typography>
       </Box>
     </Container>
+    </Box>
   );
 };
 
